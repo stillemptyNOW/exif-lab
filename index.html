@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>exif-lab — чтение и подмена метаданных</title>
+  <meta name="description" content="Читает EXIF и метаданные из фото, HEIC, RAW-подобных контейнеров и видео. Подмена EXIF для JPEG прямо в браузере." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111111'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-size='14' fill='%23e8e4dc' font-family='monospace'%3Eex%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <span class="mark">ex</span>
+        <div>
+          <h1>exif-lab</h1>
+          <p class="tag">чтение · подмена · без сервера</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="#how">как работает</a>
+        <a href="https://github.com/stillemptyNOW/exif-lab" target="_blank" rel="noopener">github</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="drop" id="dropzone" tabindex="0" aria-label="Зона загрузки файла">
+        <input type="file" id="fileInput" accept="image/*,video/*,.heic,.heif,.avif,.tif,.tiff,.dng,.cr2,.nef,.arw,.rw2,.orf,.raf,.mp4,.mov,.m4v,.webm,.mkv,.avi,.3gp" hidden />
+        <div class="drop-inner" id="dropIdle">
+          <p class="drop-title">Перетащи файл сюда</p>
+          <p class="drop-sub">JPEG · PNG · WebP · HEIC · TIFF · AVIF · MP4 · MOV · WebM · и др.</p>
+          <button type="button" class="btn" id="pickBtn">Выбрать файл</button>
+        </div>
+        <div class="drop-active hidden" id="dropActive">
+          <div class="preview-box">
+            <img id="previewImg" alt="" hidden />
+            <video id="previewVid" controls hidden></video>
+            <div id="previewFallback" class="preview-fallback hidden"></div>
+          </div>
+          <div class="file-meta">
+            <strong id="fileName">—</strong>
+            <span id="fileInfo">—</span>
+            <button type="button" class="btn btn-ghost" id="clearBtn">другой файл</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel hidden" id="workPanel">
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" data-tab="read" role="tab" aria-selected="true">чтение</button>
+          <button type="button" class="tab" data-tab="spoof" role="tab" aria-selected="false">подмена</button>
+          <button type="button" class="tab" data-tab="raw" role="tab" aria-selected="false">json</button>
+        </div>
+
+        <div class="tab-panel" id="tab-read">
+          <div class="toolbar">
+            <span id="readStatus" class="status">—</span>
+            <div class="toolbar-actions">
+              <button type="button" class="btn btn-small" id="copyJsonBtn">копировать json</button>
+              <button type="button" class="btn btn-small" id="downloadJsonBtn">скачать json</button>
+            </div>
+          </div>
+          <div id="metaGroups" class="groups"></div>
+          <p class="empty hidden" id="readEmpty">Метаданных почти нет — либо файл чистый, либо формат их не отдаёт.</p>
+        </div>
+
+        <div class="tab-panel hidden" id="tab-spoof">
+          <p class="note" id="spoofNote">
+            Подмена EXIF пишется в <strong>JPEG</strong>. Другие картинки можно перекодировать в JPEG с новыми тегами.
+            Видео — только чтение (перезапись контейнера в браузере без перекодирования не делается).
+          </p>
+
+          <form id="spoofForm" class="form" autocomplete="off">
+            <fieldset>
+              <legend>камера</legend>
+              <label>Make <input name="Make" placeholder="Apple" /></label>
+              <label>Model <input name="Model" placeholder="iPhone 15 Pro" /></label>
+              <label>LensModel <input name="LensModel" placeholder="iPhone 15 Pro back camera" /></label>
+              <label>Software <input name="Software" placeholder="17.0" /></label>
+            </fieldset>
+
+            <fieldset>
+              <legend>дата / автор</legend>
+              <label>DateTimeOriginal <input name="DateTimeOriginal" placeholder="2024:08:10 18:30:00" /></label>
+              <label>DateTime <input name="DateTime" placeholder="2024:08:10 18:30:00" /></label>
+              <label>Artist <input name="Artist" placeholder="" /></label>
+              <label>Copyright <input name="Copyright" placeholder="" /></label>
+              <label>ImageDescription <input name="ImageDescription" placeholder="" /></label>
+            </fieldset>
+
+            <fieldset>
+              <legend>съёмка</legend>
+              <label>ISO <input name="ISO" inputmode="numeric" placeholder="100" /></label>
+              <label>FNumber <input name="FNumber" placeholder="1.8" /></label>
+              <label>ExposureTime <input name="ExposureTime" placeholder="1/120" /></label>
+              <label>FocalLength <input name="FocalLength" placeholder="24" /></label>
+              <label>Orientation
+                <select name="Orientation">
+                  <option value="">—</option>
+                  <option value="1">1 · normal</option>
+                  <option value="3">3 · 180°</option>
+                  <option value="6">6 · 90° CW</option>
+                  <option value="8">8 · 90° CCW</option>
+                </select>
+              </label>
+            </fieldset>
+
+            <fieldset>
+              <legend>gps</legend>
+              <label>Latitude <input name="GPSLatitude" placeholder="55.7558" /></label>
+              <label>Longitude <input name="GPSLongitude" placeholder="37.6173" /></label>
+              <label>Altitude (m) <input name="GPSAltitude" placeholder="156" /></label>
+              <div class="gps-actions">
+                <button type="button" class="btn btn-small" id="clearGpsBtn">убрать gps</button>
+                <a class="link" id="mapsLink" href="#" target="_blank" rel="noopener" hidden>открыть на карте</a>
+              </div>
+            </fieldset>
+
+            <div class="form-actions">
+              <label class="check">
+                <input type="checkbox" id="reencodeCheck" />
+                если не JPEG — перекодировать в JPEG (качество
+                <input type="number" id="jpegQuality" min="0.5" max="1" step="0.05" value="0.92" class="q" />)
+              </label>
+              <div class="row">
+                <button type="submit" class="btn btn-primary" id="applyBtn">скачать с подменой</button>
+                <button type="button" class="btn" id="stripBtn">снять все метаданные</button>
+              </div>
+              <p class="hint" id="spoofHint"></p>
+            </div>
+          </form>
+        </div>
+
+        <div class="tab-panel hidden" id="tab-raw">
+          <pre id="rawJson" class="raw">{}</pre>
+        </div>
+      </section>
+
+      <section class="how" id="how">
+        <h2>как работает</h2>
+        <ul>
+          <li>Всё в браузере. Файлы никуда не уходят.</li>
+          <li>Картинки: EXIF / XMP / ICC / GPS через парсер бинарных сегментов.</li>
+          <li>HEIC/HEIF, TIFF, AVIF — чтение тегов, если контейнер их отдаёт.</li>
+          <li>Видео: контейнерные поля (codec, duration, creation time, tracks) через MediaInfo.</li>
+          <li>Подмена: запись EXIF-сегмента в JPEG (или JPEG после перекодирования).</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>exif-lab</span>
+      <span class="sep">·</span>
+      <span>local only</span>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.5/dist/umd/index.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
