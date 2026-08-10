@@ -344,6 +344,54 @@ h1 {
   color: var(--muted);
 }
 
+.form .grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15rem 1rem;
+}
+
+.form .grid2 label {
+  margin-bottom: 0.4rem;
+  grid-template-columns: 1fr;
+  gap: 0.22rem;
+  align-items: stretch;
+}
+
+.form .grid2 label.span2 {
+  grid-column: 1 / -1;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.presets-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 650;
+  margin-right: 0.25rem;
+}
+
+.field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.note.soft {
+  border-left-color: var(--line);
+  background: #f7f4ee;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .form input,
 .form select {
   width: 100%;
@@ -365,8 +413,13 @@ h1 {
   display: flex;
   gap: 0.75rem;
   align-items: center;
-  margin-top: 0.35rem;
-  padding-left: calc(9.5rem + 0.55rem);
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 720px) {
+  .form .grid2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-actions {

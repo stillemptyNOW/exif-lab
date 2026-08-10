@@ -72,55 +72,212 @@
           </p>
 
           <form id="spoofForm" class="form" autocomplete="off">
+            <div class="presets">
+              <span class="presets-label">пресеты</span>
+              <button type="button" class="btn btn-small" data-preset="iphone15">iPhone 15 Pro</button>
+              <button type="button" class="btn btn-small" data-preset="pixel8">Pixel 8</button>
+              <button type="button" class="btn btn-small" data-preset="canon">Canon R6</button>
+              <button type="button" class="btn btn-small" data-preset="wipe">очистить поля</button>
+            </div>
+
             <fieldset>
-              <legend>камера</legend>
-              <label>Make <input name="Make" placeholder="Apple" /></label>
-              <label>Model <input name="Model" placeholder="iPhone 15 Pro" /></label>
-              <label>LensModel <input name="LensModel" placeholder="iPhone 15 Pro back camera" /></label>
-              <label>Software <input name="Software" placeholder="17.0" /></label>
+              <legend>камера / софт</legend>
+              <div class="grid2">
+                <label>Make <input name="Make" placeholder="Apple" /></label>
+                <label>Model <input name="Model" placeholder="iPhone 15 Pro" /></label>
+                <label>LensMake <input name="LensMake" placeholder="Apple" /></label>
+                <label>LensModel <input name="LensModel" placeholder="iPhone 15 Pro back triple camera 6.765mm f/1.78" /></label>
+                <label>Software <input name="Software" placeholder="17.5.1" /></label>
+                <label>HostComputer <input name="HostComputer" placeholder="iPhone 15 Pro" /></label>
+                <label>BodySerialNumber <input name="BodySerialNumber" placeholder="" /></label>
+                <label>LensSerialNumber <input name="LensSerialNumber" placeholder="" /></label>
+              </div>
             </fieldset>
 
             <fieldset>
-              <legend>дата / автор</legend>
-              <label>DateTimeOriginal <input name="DateTimeOriginal" placeholder="2024:08:10 18:30:00" /></label>
-              <label>DateTime <input name="DateTime" placeholder="2024:08:10 18:30:00" /></label>
-              <label>Artist <input name="Artist" placeholder="" /></label>
-              <label>Copyright <input name="Copyright" placeholder="" /></label>
-              <label>ImageDescription <input name="ImageDescription" placeholder="" /></label>
+              <legend>даты / автор</legend>
+              <div class="grid2">
+                <label>DateTimeOriginal <input name="DateTimeOriginal" placeholder="2024:08:10 18:30:00" /></label>
+                <label>DateTimeDigitized <input name="DateTimeDigitized" placeholder="2024:08:10 18:30:00" /></label>
+                <label>ModifyDate (DateTime) <input name="DateTime" placeholder="2024:08:10 18:30:00" /></label>
+                <label>SubSecTimeOriginal <input name="SubSecTimeOriginal" placeholder="123" /></label>
+                <label>Artist <input name="Artist" placeholder="" /></label>
+                <label>Copyright <input name="Copyright" placeholder="" /></label>
+                <label class="span2">ImageDescription <input name="ImageDescription" placeholder="" /></label>
+                <label class="span2">UserComment <input name="UserComment" placeholder="" /></label>
+              </div>
             </fieldset>
 
             <fieldset>
-              <legend>съёмка</legend>
-              <label>ISO <input name="ISO" inputmode="numeric" placeholder="100" /></label>
-              <label>FNumber <input name="FNumber" placeholder="1.8" /></label>
-              <label>ExposureTime <input name="ExposureTime" placeholder="1/120" /></label>
-              <label>FocalLength <input name="FocalLength" placeholder="24" /></label>
-              <label>Orientation
-                <select name="Orientation">
-                  <option value="">—</option>
-                  <option value="1">1 · normal</option>
-                  <option value="3">3 · 180°</option>
-                  <option value="6">6 · 90° CW</option>
-                  <option value="8">8 · 90° CCW</option>
-                </select>
-              </label>
+              <legend>съёмка (exposure)</legend>
+              <div class="grid2">
+                <label>ISO <input name="ISO" inputmode="numeric" placeholder="100" /></label>
+                <label>FNumber / Aperture <input name="FNumber" placeholder="1.78" /></label>
+                <label>ExposureTime <input name="ExposureTime" placeholder="1/120" /></label>
+                <label>ShutterSpeed (сек) <input name="ShutterSpeed" placeholder="1/120" /></label>
+                <label>FocalLength (mm) <input name="FocalLength" placeholder="6.765" /></label>
+                <label>FocalLengthIn35mm <input name="FocalLengthIn35mmFilm" placeholder="24" /></label>
+                <label>ExposureBias <input name="ExposureBiasValue" placeholder="0" /></label>
+                <label>BrightnessValue <input name="BrightnessValue" placeholder="6.6" /></label>
+                <label>MaxApertureValue <input name="MaxApertureValue" placeholder="1.78" /></label>
+                <label>DigitalZoomRatio <input name="DigitalZoomRatio" placeholder="1" /></label>
+                <label>Orientation
+                  <select name="Orientation">
+                    <option value="">—</option>
+                    <option value="1">1 · Horizontal (normal)</option>
+                    <option value="2">2 · Mirror horizontal</option>
+                    <option value="3">3 · Rotate 180</option>
+                    <option value="4">4 · Mirror vertical</option>
+                    <option value="5">5 · Mirror horiz. + rot 270 CW</option>
+                    <option value="6">6 · Rotate 90 CW</option>
+                    <option value="7">7 · Mirror horiz. + rot 90 CW</option>
+                    <option value="8">8 · Rotate 270 CW</option>
+                  </select>
+                </label>
+                <label>ExposureProgram
+                  <select name="ExposureProgram">
+                    <option value="">—</option>
+                    <option value="0">0 Not defined</option>
+                    <option value="1">1 Manual</option>
+                    <option value="2">2 Program AE</option>
+                    <option value="3">3 Aperture priority</option>
+                    <option value="4">4 Shutter priority</option>
+                    <option value="5">5 Creative</option>
+                    <option value="6">6 Action</option>
+                    <option value="7">7 Portrait</option>
+                    <option value="8">8 Landscape</option>
+                  </select>
+                </label>
+                <label>MeteringMode
+                  <select name="MeteringMode">
+                    <option value="">—</option>
+                    <option value="0">0 Unknown</option>
+                    <option value="1">1 Average</option>
+                    <option value="2">2 Center-weighted</option>
+                    <option value="3">3 Spot</option>
+                    <option value="5">5 Multi-segment</option>
+                    <option value="6">6 Partial</option>
+                  </select>
+                </label>
+                <label>Flash
+                  <select name="Flash">
+                    <option value="">—</option>
+                    <option value="0">0 No Flash</option>
+                    <option value="1">1 Fired</option>
+                    <option value="16">16 Off, did not fire</option>
+                    <option value="24">24 Auto, did not fire</option>
+                    <option value="25">25 Auto, fired</option>
+                  </select>
+                </label>
+                <label>WhiteBalance
+                  <select name="WhiteBalance">
+                    <option value="">—</option>
+                    <option value="0">0 Auto</option>
+                    <option value="1">1 Manual</option>
+                  </select>
+                </label>
+                <label>ColorSpace
+                  <select name="ColorSpace">
+                    <option value="">—</option>
+                    <option value="1">1 sRGB</option>
+                    <option value="65535">65535 Uncalibrated</option>
+                  </select>
+                </label>
+                <label>SceneCaptureType
+                  <select name="SceneCaptureType">
+                    <option value="">—</option>
+                    <option value="0">0 Standard</option>
+                    <option value="1">1 Landscape</option>
+                    <option value="2">2 Portrait</option>
+                    <option value="3">3 Night</option>
+                  </select>
+                </label>
+                <label>ExposureMode
+                  <select name="ExposureMode">
+                    <option value="">—</option>
+                    <option value="0">0 Auto</option>
+                    <option value="1">1 Manual</option>
+                    <option value="2">2 Auto bracket</option>
+                  </select>
+                </label>
+                <label>SensingMethod
+                  <select name="SensingMethod">
+                    <option value="">—</option>
+                    <option value="2">2 One-chip color area</option>
+                    <option value="1">1 Not defined</option>
+                  </select>
+                </label>
+              </div>
+              <p class="field-hint">ApertureValue / ShutterSpeedValue (APEX) считаются из FNumber и ExposureTime автоматически. LightValue / Megapixels / ImageSize у просмотрщиков — вычисляемые, не теги.</p>
+            </fieldset>
+
+            <fieldset>
+              <legend>размер / разрешение (JFIF + Exif)</legend>
+              <div class="grid2">
+                <label>PixelXDimension <input name="PixelXDimension" inputmode="numeric" placeholder="4032" /></label>
+                <label>PixelYDimension <input name="PixelYDimension" inputmode="numeric" placeholder="3024" /></label>
+                <label>XResolution <input name="XResolution" placeholder="72" /></label>
+                <label>YResolution <input name="YResolution" placeholder="72" /></label>
+                <label>ResolutionUnit
+                  <select name="ResolutionUnit">
+                    <option value="">—</option>
+                    <option value="1">1 None</option>
+                    <option value="2">2 inches</option>
+                    <option value="3">3 cm</option>
+                  </select>
+                </label>
+                <label>ExifVersion <input name="ExifVersion" placeholder="0232" /></label>
+              </div>
             </fieldset>
 
             <fieldset>
               <legend>gps</legend>
-              <label>Latitude <input name="GPSLatitude" placeholder="55.7558" /></label>
-              <label>Longitude <input name="GPSLongitude" placeholder="37.6173" /></label>
-              <label>Altitude (m) <input name="GPSAltitude" placeholder="156" /></label>
+              <div class="grid2">
+                <label>GPSLatitude <input name="GPSLatitude" placeholder="55.7558 или 55 45 20.88" /></label>
+                <label>GPSLatitudeRef
+                  <select name="GPSLatitudeRef">
+                    <option value="">auto</option>
+                    <option value="N">N</option>
+                    <option value="S">S</option>
+                  </select>
+                </label>
+                <label>GPSLongitude <input name="GPSLongitude" placeholder="37.6173" /></label>
+                <label>GPSLongitudeRef
+                  <select name="GPSLongitudeRef">
+                    <option value="">auto</option>
+                    <option value="E">E</option>
+                    <option value="W">W</option>
+                  </select>
+                </label>
+                <label>GPSAltitude (m) <input name="GPSAltitude" placeholder="156" /></label>
+                <label>GPSAltitudeRef
+                  <select name="GPSAltitudeRef">
+                    <option value="">auto</option>
+                    <option value="0">0 Above Sea Level</option>
+                    <option value="1">1 Below Sea Level</option>
+                  </select>
+                </label>
+                <label>GPSImgDirection <input name="GPSImgDirection" placeholder="90" /></label>
+                <label>GPSSpeed <input name="GPSSpeed" placeholder="0" /></label>
+                <label>GPSDateStamp <input name="GPSDateStamp" placeholder="2024:08:10" /></label>
+                <label>GPSTimeStamp <input name="GPSTimeStamp" placeholder="15:30:00" /></label>
+                <label>GPSMapDatum <input name="GPSMapDatum" placeholder="WGS-84" /></label>
+                <label>GPSVersionID <input name="GPSVersionID" placeholder="2.3.0.0" /></label>
+              </div>
               <div class="gps-actions">
                 <button type="button" class="btn btn-small" id="clearGpsBtn">убрать gps</button>
                 <a class="link" id="mapsLink" href="#" target="_blank" rel="noopener" hidden>открыть на карте</a>
               </div>
             </fieldset>
 
+            <p class="note soft">
+              <strong>Не пишутся как EXIF-теги</strong> (считаются с файла): FileSize, MD5, SHA1, SHA256, MIMEType, FileType, Megapixels, ImageSize, GPSPosition, LightValue, Aperture (алиас FNumber), FocalLength35efl (≈ FocalLengthIn35mm). После сохранения хеши и размер будут другими — это нормально.
+            </p>
+
             <div class="form-actions">
               <label class="check">
                 <input type="checkbox" id="reencodeCheck" />
-                если не JPEG — перекодировать в JPEG (качество
+                перекодировать пиксели в JPEG (качество
                 <input type="number" id="jpegQuality" min="0.5" max="1" step="0.05" value="0.92" class="q" />)
               </label>
               <div class="row">
