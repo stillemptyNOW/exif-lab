@@ -18,7 +18,8 @@
 |--------|--------|---------|
 | JPEG | да | да |
 | PNG / WebP / AVIF | да* | через перекодирование в JPEG |
-| HEIC / RAW | теги, если парсер видит | превью/перекод зависят от браузера |
+| HEIC / HEIF | да | да (декод libheif/wasm → JPEG + EXIF) |
+| RAW (CR2/NEF/ARW…) | теги, если парсер видит | нет (нужен экспорт в JPEG) |
 | Видео (MP4, MOV, WebM…) | да | нет (нужен перекод контейнера) |
 
 \*насколько позволяет контейнер
@@ -27,6 +28,7 @@
 
 - [exifr](https://github.com/MikeKovarik/exifr) — парсинг
 - [piexifjs](https://github.com/hMatoba/piexifjs) — запись EXIF в JPEG
+- [heic2any](https://github.com/alexcorvi/heic2any) — декод HEIC/HEIF
 - [mediainfo.js](https://github.com/buzz/mediainfo.js) — видео
 
 ## Локально

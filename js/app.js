@@ -11,7 +11,14 @@
     meta: null,
     clearGps: false,
     mediaInfo: null,
+    /** @type {Blob|null} decoded raster cache (e.g. HEIC → JPEG) */
+    decodedBlob: null,
   };
+
+  const HEIC_EXT = new Set(["heic", "heif", "hif", "heics", "heifs"]);
+  const RAW_EXT = new Set([
+    "dng", "cr2", "cr3", "nef", "arw", "rw2", "orf", "raf", "srw", "pef", "raw",
+  ]);
 
   const el = {
     drop: $("#dropzone"),
@@ -87,6 +94,139 @@
     const ext = extOf(file.name);
     const t = (file.type || "").toLowerCase();
     return JPEG_EXT.has(ext) || t === "image/jpeg" || t === "image/jpg";
+  }
+
+  function isHeicLike(file, buffer) {
+    const ext = extOf(file.name);
+    if (HEIC_EXT.has(ext)) return true;
+    const t = (file.type || "").toLowerCase();
+    if (t.includes("heic") || t.includes("heif")) return true;
+    if (!buffer || buffer.byteLength < 16) return false;
+    const u8 = new Uint8Array(buffer);
+    const tag = String.fromCharCode(u8[4], u8[5], u8[6], u8[7]);
+    if (tag !== "ftyp") return false;
+    const brands = [];
+    brands.push(String.fromCharCode(u8[8], u8[9], u8[10], u8[11]));
+    // compatible brands
+    for (let i = 16; i + 4 <= Math.min(u8.length, 64); i += 4) {
+      brands.push(String.fromCharCode(u8[i], u8[i + 1], u8[i + 2], u8[i + 3]));
+    }
+    const heicBrands = new Set([
+      "heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs",
+      "mif1", "msf1", "heif",
+    ]);
+    return brands.some((b) => heicBrands.has(b));
+  }
+
+  function isRawLike(file) {
+    return RAW_EXT.has(extOf(file.name));
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(r.error || new Error("FileReader failed"));
+      r.readAsDataURL(blob);
+    });
+  }
+
+  async function heicToJpegBlob(file, quality = 0.92) {
+    if (typeof heic2any === "undefined") {
+      throw new Error("heic2any не загрузился (CDN). Обнови страницу.");
+    }
+    const q = Math.min(1, Math.max(0.1, Number(quality) || 0.92));
+    // some OS give empty MIME — libheif is happier with a typed blob
+    const input =
+      file.type && /heic|heif/i.test(file.type)
+        ? file
+        : new Blob([state.buffer || (await file.arrayBuffer())], {
+            type: "image/heic",
+          });
+
+    let result;
+    try {
+      result = await heic2any({
+        blob: input,
+        toType: "image/jpeg",
+        quality: q,
+      });
+    } catch (err) {
+      const msg = String(err && (err.message || err.code) ? err.message || err.code : err);
+      throw new Error(
+        /format|ERR_|heic|decode/i.test(msg)
+          ? "Не удалось декодировать HEIC/HEIF. Файл битый, защищён, или это не HEIC."
+          : `HEIC decode: ${msg}`
+      );
+    }
+    const blob = Array.isArray(result) ? result[0] : result;
+    if (!(blob instanceof Blob)) throw new Error("HEIC: пустой результат декода");
+    // normalize type for piexif / download path
+    if (blob.type !== "image/jpeg") {
+      return new Blob([blob], { type: "image/jpeg" });
+    }
+    return blob;
+  }
+
+  async function ensureDecodedRaster(file) {
+    if (state.decodedBlob) return state.decodedBlob;
+
+    // Native path first (Safari often decodes HEIC; Chrome — PNG/WebP/AVIF)
+    try {
+      const bmp = await createImageBitmap(file);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = bmp.width;
+        canvas.height = bmp.height;
+        canvas.getContext("2d").drawImage(bmp, 0, 0);
+        const q = Math.min(1, Math.max(0.5, Number(el.jpegQuality.value) || 0.92));
+        const dataUrl = canvas.toDataURL("image/jpeg", q);
+        state.decodedBlob = dataUrlToBlob(dataUrl);
+        return state.decodedBlob;
+      } finally {
+        if (bmp.close) bmp.close();
+      }
+    } catch {
+      /* fall through */
+    }
+
+    if (isHeicLike(file, state.buffer)) {
+      state.decodedBlob = await heicToJpegBlob(file, el.jpegQuality.value);
+      return state.decodedBlob;
+    }
+
+    // Image() fallback for some formats
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error("img decode failed"));
+        i.src = url;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      if (!canvas.width || !canvas.height) throw new Error("zero dimensions");
+      canvas.getContext("2d").drawImage(img, 0, 0);
+      const q = Math.min(1, Math.max(0.5, Number(el.jpegQuality.value) || 0.92));
+      state.decodedBlob = dataUrlToBlob(canvas.toDataURL("image/jpeg", q));
+      return state.decodedBlob;
+    } catch {
+      if (isRawLike(file)) {
+        throw new Error(
+          "RAW (CR2/NEF/ARW…) браузер не декодирует. Метаданные — на вкладке «чтение». Для подмены экспортируй JPEG из Lightroom/Photos."
+        );
+      }
+      if (isHeicLike(file, state.buffer)) {
+        throw new Error("HEIC не декодировался. Проверь файл или обнови страницу (CDN heic2any).");
+      }
+      throw new Error(
+        "Браузер не смог декодировать картинку для перекодирования. Попробуй JPEG/PNG/WebP или HEIC."
+      );
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   function serialize(value) {
@@ -251,6 +391,7 @@
     state.kind = null;
     state.meta = null;
     state.clearGps = false;
+    state.decodedBlob = null;
     el.fileInput.value = "";
     el.dropIdle.classList.remove("hidden");
     el.dropActive.classList.add("hidden");
@@ -277,17 +418,21 @@
     state.file = file;
     state.kind = detectKind(file);
     state.clearGps = false;
+    state.decodedBlob = null;
     state.buffer = await file.arrayBuffer();
 
     el.dropIdle.classList.add("hidden");
     el.dropActive.classList.remove("hidden");
     el.workPanel.classList.remove("hidden");
     el.fileName.textContent = file.name;
-    el.fileInfo.textContent = `${formatBytes(file.size)} · ${file.type || "unknown type"} · ${state.kind}`;
+    const heic = isHeicLike(file, state.buffer);
+    const label = heic ? "heic" : state.kind;
+    el.fileInfo.textContent = `${formatBytes(file.size)} · ${file.type || "unknown type"} · ${label}`;
 
-    showPreview(file);
     setHint("");
     el.readStatus.textContent = "читаем…";
+    // preview async (HEIC may need wasm decode)
+    showPreview(file);
 
     try {
       const meta = await readMetadata(file, state.buffer);
@@ -295,7 +440,7 @@
       renderMeta(meta);
       fillForm(meta.flat);
       updateMapsLink();
-      el.readStatus.textContent = `${Object.keys(meta.flat).length} полей · ${state.kind}`;
+      el.readStatus.textContent = `${Object.keys(meta.flat).length} полей · ${label}`;
     } catch (err) {
       console.error(err);
       state.meta = { groups: {}, flat: {}, raw: { error: String(err.message || err) } };
@@ -310,31 +455,63 @@
     if (state.kind === "video") {
       el.spoofNote.innerHTML =
         "Видео: доступно <strong>чтение</strong> контейнерных метаданных. Подмена/очистка EXIF в браузере без перекодирования не поддерживается.";
+    } else if (heic) {
+      el.spoofNote.innerHTML =
+        "HEIC/HEIF: теги читаются, пиксели декодируются в браузере → JPEG с новыми EXIF. Перекодирование включится автоматически.";
+    } else if (isRawLike(file)) {
+      el.spoofNote.innerHTML =
+        "RAW: метаданные можно прочитать. Перекодирование пикселей в браузере не поддерживается — для подмены нужен JPEG.";
+      el.applyBtn.disabled = true;
+      el.stripBtn.disabled = true;
     } else if (state.kind === "image" && !isJpeg(file)) {
       el.spoofNote.innerHTML =
         "Файл не JPEG. Подмена: включи перекодирование в JPEG — новые EXIF-теги запишутся в выгрузку. Оригинал на диск не меняется.";
     } else {
       el.spoofNote.innerHTML =
-        "Подмена EXIF пишется в <strong>JPEG</strong>. Другие картинки можно перекодировать в JPEG с новыми тегами. Видео — только чтение.";
+        "Подмена EXIF пишется в <strong>JPEG</strong>. HEIC/PNG/WebP — через перекодирование. Видео — только чтение.";
     }
   }
 
-  function showPreview(file) {
-    const url = URL.createObjectURL(file);
-    if (state.kind === "image") {
+  async function showPreview(file) {
+    if (state.kind === "video") {
+      const url = URL.createObjectURL(file);
+      el.previewVid.hidden = false;
+      el.previewVid.src = url;
+      return;
+    }
+
+    if (state.kind !== "image") {
+      el.previewFallback.classList.remove("hidden");
+      el.previewFallback.textContent = "нет превью";
+      return;
+    }
+
+    const tryUrl = (url) => {
       el.previewImg.hidden = false;
+      el.previewFallback.classList.add("hidden");
       el.previewImg.src = url;
       el.previewImg.onerror = () => {
         el.previewImg.hidden = true;
         el.previewFallback.classList.remove("hidden");
         el.previewFallback.textContent = "превью недоступно\n(метаданные читаются)";
       };
-    } else if (state.kind === "video") {
-      el.previewVid.hidden = false;
-      el.previewVid.src = url;
-    } else {
+    };
+
+    // Direct preview for formats the browser can show
+    if (!isHeicLike(file, state.buffer)) {
+      tryUrl(URL.createObjectURL(file));
+      return;
+    }
+
+    el.previewFallback.classList.remove("hidden");
+    el.previewFallback.textContent = "декод HEIC…";
+    try {
+      const blob = await ensureDecodedRaster(file);
+      tryUrl(URL.createObjectURL(blob));
+    } catch {
+      el.previewImg.hidden = true;
       el.previewFallback.classList.remove("hidden");
-      el.previewFallback.textContent = "нет превью";
+      el.previewFallback.textContent = "превью HEIC недоступно\n(метаданные читаются)";
     }
   }
 
@@ -695,53 +872,32 @@
 
   async function fileToJpegDataUrl(file) {
     if (isJpeg(file) && !el.reencodeCheck.checked) {
-      return await new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = () => reject(r.error);
-        r.readAsDataURL(file);
-      });
+      return blobToDataUrl(file);
     }
 
-    const bitmap = await loadImageBitmap(file);
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      canvas.getContext("2d").drawImage(bitmap, 0, 0);
-      const q = Math.min(1, Math.max(0.5, Number(el.jpegQuality.value) || 0.92));
-      return canvas.toDataURL("image/jpeg", q);
-    } finally {
-      if (bitmap.close) bitmap.close();
-    }
-  }
-
-  async function loadImageBitmap(file) {
-    try {
-      return await createImageBitmap(file);
-    } catch {
-      const url = URL.createObjectURL(file);
+    // HEIC and other non-JPEG: decode → JPEG data URL
+    if (!isJpeg(file) || el.reencodeCheck.checked) {
+      if (!isJpeg(file)) el.reencodeCheck.checked = true;
+      const blob = await ensureDecodedRaster(file);
+      // If cache is already JPEG from heic2any / canvas, use it directly
+      if (blob.type === "image/jpeg" || blob.type === "image/jpg") {
+        return blobToDataUrl(blob);
+      }
+      // safety: re-encode whatever we got
+      const bmp = await createImageBitmap(blob);
       try {
-        const img = await new Promise((resolve, reject) => {
-          const i = new Image();
-          i.onload = () => resolve(i);
-          i.onerror = () =>
-            reject(
-              new Error(
-                "Браузер не может декодировать изображение для перекодирования (HEIC/RAW часто не поддерживаются). Используй JPEG/PNG/WebP."
-              )
-            );
-          i.src = url;
-        });
         const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
-        canvas.getContext("2d").drawImage(img, 0, 0);
-        return await createImageBitmap(canvas);
+        canvas.width = bmp.width;
+        canvas.height = bmp.height;
+        canvas.getContext("2d").drawImage(bmp, 0, 0);
+        const q = Math.min(1, Math.max(0.5, Number(el.jpegQuality.value) || 0.92));
+        return canvas.toDataURL("image/jpeg", q);
       } finally {
-        URL.revokeObjectURL(url);
+        if (bmp.close) bmp.close();
       }
     }
+
+    return blobToDataUrl(file);
   }
 
   function insertExifIntoDataUrl(dataUrl, exifObj) {
@@ -774,11 +930,16 @@
     setHint("собираем jpeg…");
 
     try {
+      if (isRawLike(state.file)) {
+        throw new Error("RAW нельзя перекодировать в браузере. Экспортируй JPEG и подмени EXIF уже на нём.");
+      }
       const values = formValues();
+      if (!isJpeg(state.file)) el.reencodeCheck.checked = true;
       if (!isJpeg(state.file) && !el.reencodeCheck.checked) {
         throw new Error("Для не-JPEG включи перекодирование в JPEG");
       }
 
+      setHint(isHeicLike(state.file, state.buffer) ? "декодируем HEIC → JPEG…" : "собираем jpeg…");
       const dataUrl = await fileToJpegDataUrl(state.file);
       const exifObj = buildExifObj(values);
       const outUrl = insertExifIntoDataUrl(dataUrl, exifObj);
@@ -801,29 +962,31 @@
     el.stripBtn.disabled = true;
     setHint("снимаем метаданные…");
     try {
+      if (isRawLike(state.file)) {
+        throw new Error("RAW нельзя перекодировать в браузере.");
+      }
       let dataUrl;
       if (isJpeg(state.file) && !el.reencodeCheck.checked) {
         dataUrl = stripDataUrl(await fileToJpegDataUrl(state.file));
       } else {
         el.reencodeCheck.checked = true;
-        const bitmap = await loadImageBitmap(state.file);
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = bitmap.width;
-          canvas.height = bitmap.height;
-          canvas.getContext("2d").drawImage(bitmap, 0, 0);
-          dataUrl = canvas.toDataURL(
-            "image/jpeg",
-            Math.min(1, Math.max(0.5, Number(el.jpegQuality.value) || 0.92))
-          );
-        } finally {
-          if (bitmap.close) bitmap.close();
+        setHint(isHeicLike(state.file, state.buffer) ? "декодируем HEIC…" : "перекодируем…");
+        // decoded raster has no original EXIF container tags
+        const blob = await ensureDecodedRaster(state.file);
+        dataUrl = await blobToDataUrl(blob);
+        // ensure pure JPEG without leftover APP1 if any
+        if (blob.type === "image/jpeg") {
+          try {
+            dataUrl = stripDataUrl(dataUrl);
+          } catch {
+            /* already clean from canvas/heic path */
+          }
         }
       }
 
-      const blob = dataUrlToBlob(dataUrl);
-      downloadBlob(blob, `${baseName(state.file.name)}_clean.jpg`);
-      setHint(`метаданные сняты · ${formatBytes(blob.size)}`, "ok");
+      const out = dataUrlToBlob(dataUrl);
+      downloadBlob(out, `${baseName(state.file.name)}_clean.jpg`);
+      setHint(`метаданные сняты · ${formatBytes(out.size)}`, "ok");
     } catch (err) {
       console.error(err);
       setHint(err.message || String(err), "err");

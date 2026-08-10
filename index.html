@@ -142,7 +142,8 @@
         <ul>
           <li>Всё в браузере. Файлы никуда не уходят.</li>
           <li>Картинки: EXIF / XMP / ICC / GPS через парсер бинарных сегментов.</li>
-          <li>HEIC/HEIF, TIFF, AVIF — чтение тегов, если контейнер их отдаёт.</li>
+          <li>HEIC/HEIF — чтение тегов + декод в JPEG в браузере (libheif/wasm).</li>
+          <li>TIFF, AVIF, PNG, WebP — чтение; перекод в JPEG если браузер умеет рисовать формат.</li>
           <li>Видео: контейнерные поля (codec, duration, creation time, tracks) через MediaInfo.</li>
           <li>Подмена: запись EXIF-сегмента в JPEG (или JPEG после перекодирования).</li>
         </ul>
@@ -158,6 +159,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.5/dist/umd/index.min.js"></script>
   <script src="js/app.js"></script>
 </body>
